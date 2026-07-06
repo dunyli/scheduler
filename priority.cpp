@@ -1,4 +1,5 @@
-﻿#include "priority.h"
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include "priority.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>

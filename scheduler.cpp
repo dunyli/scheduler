@@ -4,17 +4,16 @@
 #include <locale.h>
 
 /* Подключаем заголовочные файлы C */
-extern "C" {
 #include "process.h"
 #include "scheduler_core.h"
 #include "fifo.h"
 #include "round_robin.h"
 #include "priority.h"
 #include "visualizer.h"
-}
 
-/* Внешняя функция из test.c */
-extern "C" void run_all_tests();
+/* Объявление функции из test.cpp */
+void run_all_tests();
+
 
 /*
  * Функция: run_interactive

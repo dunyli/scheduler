@@ -15,9 +15,6 @@ void clear_screen() {
 /*
  * Функция: get_status_color
  * Назначение: Возвращает цвет для статуса процесса
- * Параметры:
- *   status - строка со статусом
- * Возвращает: ANSI-код цвета
  */
 static const char* get_status_color(const char* status) {
     if (strcmp(status, "завершен") == 0) return COLOR_GREEN;
@@ -28,9 +25,7 @@ static const char* get_status_color(const char* status) {
 
 /*
  * Функция: display_process_info
- * Назначение: Выводит таблицу с информацией о всех процессах
- * Параметры:
- *   s - указатель на планировщик
+ * Назначение: Выводит таблицу с информацией о процессах
  */
 void display_process_info(Scheduler* s) {
     if (!s) return;
@@ -40,7 +35,6 @@ void display_process_info(Scheduler* s) {
         "PID", "Имя", "Прибытие", "Выполнение", "Приоритет", "Статус");
     printf("----------------------------------------------------------------------\n");
 
-    /* Выводим информацию о каждом процессе */
     for (int i = 0; i < s->num_processes; i++) {
         Process* p = s->processes[i];
         const char* color = get_status_color(p->status);
@@ -53,10 +47,7 @@ void display_process_info(Scheduler* s) {
 
 /*
  * Функция: display_gantt_chart
- * Назначение: Отображает диаграмму Ганта в терминале
- * Параметры:
- *   s - указатель на планировщик
- * Сжимает историю для компактного отображения
+ * Назначение: Отображает диаграмму Ганта
  */
 void display_gantt_chart(Scheduler* s) {
     if (!s || s->history_size == 0) {
@@ -67,7 +58,6 @@ void display_gantt_chart(Scheduler* s) {
     printf("%s%sДиаграмма Ганта (время 0-%d):%s\n",
         COLOR_BOLD, COLOR_CYAN, s->current_time, COLOR_END);
 
-    /* Структура для сжатой записи */
     typedef struct GanttEntry {
         int start;
         int end;
@@ -80,7 +70,6 @@ void display_gantt_chart(Scheduler* s) {
         return;
     }
 
-    /* Сжимаем последовательные записи с одинаковым PID */
     int gantt_size = 0;
     int current_pid = s->history[0].pid;
     int start_time = s->history[0].time;
@@ -95,32 +84,27 @@ void display_gantt_chart(Scheduler* s) {
             start_time = s->history[i].time;
         }
     }
-    /* Добавляем последнюю запись */
     gantt[gantt_size].start = start_time;
     gantt[gantt_size].end = s->current_time;
     gantt[gantt_size].pid = current_pid;
     gantt_size++;
 
-    /* Отображаем диаграмму */
-    int max_width = 80;  /* Максимальная ширина диаграммы */
+    int max_width = 80;
     int total_time = s->current_time;
-    int scale = total_time / max_width + 1;  /* Масштаб для сжатия */
+    int scale = (total_time / max_width) + 1;
 
-    /* Цвета для разных процессов */
     const char* colors[] = { COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE,
                             COLOR_CYAN, COLOR_MAGENTA, COLOR_HEADER, "" };
 
-    /* Выводим каждый сегмент диаграммы */
     for (int i = 0; i < gantt_size && i < max_width; i++) {
         int length = gantt[i].end - gantt[i].start;
         char symbol = '.';
         const char* color = COLOR_END;
 
         if (gantt[i].pid != -1) {
-            /* Находим имя процесса по PID */
             for (int j = 0; j < s->num_processes; j++) {
                 if (s->processes[j]->pid == gantt[i].pid) {
-                    symbol = s->processes[j]->name[0];  /* Первая буква имени */
+                    symbol = s->processes[j]->name[0];
                     color = colors[gantt[i].pid % 7];
                     break;
                 }
@@ -131,7 +115,7 @@ void display_gantt_chart(Scheduler* s) {
         if (count < 1) count = 1;
         for (int j = 0; j < count; j++) {
             if (gantt[i].pid == -1) {
-                printf(".");  /* Простой процессора */
+                printf(".");
             }
             else {
                 printf("%s%c%s", color, symbol, COLOR_END);
@@ -140,9 +124,8 @@ void display_gantt_chart(Scheduler* s) {
     }
     printf("\n");
 
-    /* Метки времени */
     printf(" ");
-    for (int i = 0; i <= total_time; i += total_time / 20 + 1) {
+    for (int i = 0; i <= total_time; i += (total_time / 20) + 1) {
         printf("%-4d", i);
     }
     printf("\n");
@@ -152,9 +135,7 @@ void display_gantt_chart(Scheduler* s) {
 
 /*
  * Функция: display_statistics
- * Назначение: Отображает статистику выполнения процессов
- * Параметры:
- *   s - указатель на планировщик
+ * Назначение: Отображает статистику выполнения
  */
 void display_statistics(Scheduler* s) {
     if (!s || s->num_completed == 0) {
@@ -164,7 +145,6 @@ void display_statistics(Scheduler* s) {
 
     printf("\n%s%sСтатистика:%s\n", COLOR_BOLD, COLOR_HEADER, COLOR_END);
 
-    /* Вычисляем средние значения */
     int total_wait = 0, total_turnaround = 0;
     for (int i = 0; i < s->num_completed; i++) {
         total_wait += s->completed[i]->waiting_time;
@@ -178,7 +158,6 @@ void display_statistics(Scheduler* s) {
     printf("Среднее время оборота: %.2f\n", avg_turnaround);
     printf("Пропускная способность: %d процессов\n", s->num_completed);
 
-    /* Детальная информация по каждому процессу */
     printf("\n%sДетальная информация:%s\n", COLOR_BOLD, COLOR_END);
     printf("%-6s %-10s %-10s %-10s %-10s\n",
         "PID", "Имя", "Ожидание", "Оборота", "Завершение");
@@ -195,9 +174,6 @@ void display_statistics(Scheduler* s) {
 /*
  * Функция: visualize_scheduler
  * Назначение: Полная визуализация работы планировщика
- * Параметры:
- *   s - указатель на планировщик
- *   algorithm_name - название алгоритма
  */
 void visualize_scheduler(Scheduler* s, const char* algorithm_name) {
     clear_screen();
@@ -215,10 +191,9 @@ void visualize_scheduler(Scheduler* s, const char* algorithm_name) {
 /*
  * Функция: wait_for_enter
  * Назначение: Ожидает нажатия клавиши Enter
- * Используется для паузы между выводами
  */
 void wait_for_enter() {
     printf("\n%sНажмите Enter для продолжения...%s", COLOR_BOLD, COLOR_END);
     getchar();
-    getchar();  /* Двойной вызов для очистки буфера */
+    getchar();
 }

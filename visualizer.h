@@ -33,4 +33,4 @@ void visualize_scheduler(Scheduler* s, const char* algorithm_name);
 /* ∆дет нажати€ Enter */
 void wait_for_enter();
 
-#endif
+#endif 
