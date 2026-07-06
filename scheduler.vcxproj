@@ -145,6 +145,7 @@
     <ClCompile Include="round_robin.cpp" />
     <ClCompile Include="scheduler.cpp" />
     <ClCompile Include="scheduler_core.cpp" />
+    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fifo.h" />
