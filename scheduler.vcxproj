@@ -146,6 +146,7 @@
     <ClCompile Include="scheduler.cpp" />
     <ClCompile Include="scheduler_core.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="visualizer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fifo.h" />
@@ -153,6 +154,7 @@
     <ClInclude Include="process.h" />
     <ClInclude Include="round_robin.h" />
     <ClInclude Include="scheduler_core.h" />
+    <ClInclude Include="visualizer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
