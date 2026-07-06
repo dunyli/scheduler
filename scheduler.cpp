@@ -162,7 +162,7 @@ static void run_interactive() {
  */
 int main() {
     /* Установка русской локали для корректного отображения */
-    setlocale(LC_ALL, "ru_RU.UTF-8");
+    setlocale(LC_ALL, "Rus");
 
     printf("%s%sСимулятор планировщика процессов%s\n",
         COLOR_HEADER, COLOR_BOLD, COLOR_END);

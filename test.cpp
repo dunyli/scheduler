@@ -12,7 +12,7 @@
  * Тест 1: Базовый тест с тремя процессами
  * Проверяет работу всех алгоритмов на простом наборе процессов
  */
-static void test_basic() {
+    static void test_basic() {
     printf("%s%sТест 1: Базовый тест с тремя процессами%s\n",
         COLOR_HEADER, COLOR_BOLD, COLOR_END);
 

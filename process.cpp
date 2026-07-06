@@ -187,7 +187,7 @@ Process** generate_random_processes(int* count) {
     for (int i = 0; i < *count; i++) {
         int name_idx = rand() % 10;  /* Случайный индекс имени */
         char name[20];
-        sprintf(name, "%s%d", names[name_idx], i + 1);  /* Формируем имя с номером */
+        snprintf(name, sizeof(name), "%s%d", names[name_idx], i + 1);  /* Формируем имя с номером */
 
         /* Случайные параметры процесса:
          * - прибытие от 0 до 9
