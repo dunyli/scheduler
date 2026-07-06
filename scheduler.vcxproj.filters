@@ -24,12 +24,18 @@
     <ClCompile Include="scheduler_core.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="fifo.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="process.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="scheduler_core.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="fifo.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
