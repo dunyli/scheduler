@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClCompile Include="process.cpp" />
     <ClCompile Include="scheduler.cpp" />
+    <ClCompile Include="scheduler_core.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="process.h" />
