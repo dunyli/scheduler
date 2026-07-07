@@ -136,9 +136,11 @@
 
 #### Сборка через командную строку
 // Для MinGW
+
 g++ -std=c++11 -o scheduler.exe scheduler.cpp process.cpp scheduler_core.cpp fifo.cpp round_robin.cpp priority.cpp visualizer.cpp monitor.cpp test.cpp -lpsapi -lwinmm
 
 // Для MSVC
+
 cl /EHsc /Fe:scheduler.exe scheduler.cpp process.cpp scheduler_core.cpp fifo.cpp round_robin.cpp priority.cpp visualizer.cpp monitor.cpp test.cpp
 
 #### Запуск программы
