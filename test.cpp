@@ -192,10 +192,10 @@ static void test_round_robin_quantum() {
  * Проверяет работоспособность с 10 случайными процессами
  */
 static void test_stress() {
-    printf("\n%s%sТест 4: Стресс-тест с 10 процессами%s\n",
+    printf("\n%s%sТест 4: Стресс-тест с несколькими процессами%s\n",
         COLOR_HEADER, COLOR_BOLD, COLOR_END);
 
-    int count = 10;
+    int count = 30;
     Process** processes = generate_random_processes(&count);
     if (!processes) {
         printf("Ошибка генерации процессов\n");
@@ -254,7 +254,7 @@ static void test_stress() {
 
     free_scheduler(s);
     free_processes(processes, count);
-    printf("\n%s✓ Стресс-тест пройден%s\n", COLOR_GREEN, COLOR_END);
+    printf("\n%s Стресс-тест пройден%s\n", COLOR_GREEN, COLOR_END);
 }
 
 /*

@@ -159,15 +159,18 @@ Process** generate_test_processes(int* count) {
  *             все параметры генерируются случайно
  */
 Process** generate_random_processes(int* count) {
-    /* Запрос количества процессов у пользователя */
-    printf("Введите количество процессов (по умолчанию 5): ");
-    char input[10];
-    fgets(input, sizeof(input), stdin);
-    *count = atoi(input);
+    /* Запрос количества процессов у пользователя 
+    если стресс-тест, то там уже 30 процессов */
+    if (*count != 30) {
+        char input[30];
+        printf("Введите количество процессов (по умолчанию 5): ");
+        fgets(input, sizeof(input), stdin);
+        *count = atoi(input);
+    }
 
     /* Проверка и коррекция введенного значения */
     if (*count <= 0) *count = 5;   /* Если введено 0 или меньше - ставим 5 */
-    if (*count > 10) *count = 10;  /* Ограничиваем максимум 10 процессами */
+    if (*count > 30) *count = 30;  /* Ограничиваем максимум 30 процессами */
 
     /* Выделяем память под массив указателей на процессы */
     Process** processes = (Process**)malloc(*count * sizeof(Process*));
@@ -177,7 +180,7 @@ Process** generate_random_processes(int* count) {
     }
 
     /* Массив имен для случайного выбора */
-    const char* names[] = { "Firefox", "Chrome", "Python", "Java", "Docker",
+    const char* names[] = { "Firefox", "Chrome", "Python", "Java", "Google",
                            "MySQL", "Node", "Redis", "Nginx", "GCC" };
 
     /* Инициализация генератора случайных чисел */

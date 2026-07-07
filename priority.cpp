@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-/* Структура очереди для приоритетного планирования */
+/* Структура очереди */
 typedef struct QueueNode {
     Process* process;
     struct QueueNode* next;
@@ -16,9 +16,6 @@ typedef struct {
     int size;
 } Queue;
 
-/*
- * Функции работы с очередью
- */
 static Queue* create_queue() {
     Queue* q = (Queue*)malloc(sizeof(Queue));
     if (!q) return NULL;
@@ -69,16 +66,10 @@ static void free_queue(Queue* q) {
 /*
  * Функция: priority_scheduler
  * Назначение: Запускает алгоритм приоритетного планирования
- * Параметры:
- *   s - указатель на планировщик
- * Возвращает: Массив завершенных процессов
  *
- * Алгоритм работы:
- * 1. Процессы распределяются по очередям в зависимости от приоритета
- * 2. Всегда выполняется процесс из очереди с наивысшим приоритетом
- * 3. При появлении процесса с более высоким приоритетом происходит вытеснение
- * 4. Каждые 20 тактов выполняется приоритетное ускорение (boost)
- * 5. Процессы перемещаются в очередь с наивысшим приоритетом
+ * ИСПРАВЛЕННАЯ ВЕРСИЯ:
+ * - Процессы с более высоким приоритетом (меньший номер) выполняются раньше
+ * - При появлении процесса с более высоким приоритетом происходит вытеснение
  */
 Process** priority_scheduler(Scheduler* s) {
     if (!s) return NULL;
@@ -95,8 +86,7 @@ Process** priority_scheduler(Scheduler* s) {
 
     int remaining_count = s->num_processes;
     int process_index = 0;
-    int boost_counter = 0;  /* Счетчик для приоритетного ускорения */
-    int current_priority = -1;
+    int boost_counter = 0;
 
     while (remaining_count > 0 ||
         !is_queue_empty(queues[0]) || !is_queue_empty(queues[1]) ||
@@ -110,6 +100,8 @@ Process** priority_scheduler(Scheduler* s) {
             /* Ограничиваем приоритет диапазоном 0-3 */
             if (priority > 3) priority = 3;
             if (priority < 0) priority = 0;
+
+            /* Добавляем в очередь соответствующего приоритета */
             enqueue(queues[priority], s->processes[process_index]);
             process_index++;
         }
@@ -117,7 +109,7 @@ Process** priority_scheduler(Scheduler* s) {
         /*
          * Приоритетное ускорение (Priority Boosting)
          * Каждые 20 тактов все процессы перемещаются в очередь 0
-         * Это предотвращает простой процессов с низким приоритетом
+         * Это предотвращает голодание процессов с низким приоритетом
          */
         boost_counter++;
         if (boost_counter >= 20) {
@@ -130,29 +122,65 @@ Process** priority_scheduler(Scheduler* s) {
             }
         }
 
-        /* Выбираем очередь с наивысшим приоритетом, в которой есть процессы */
-        int selected_queue = -1;
-        for (int level = 0; level < 4; level++) {
-            if (!is_queue_empty(queues[level])) {
-                selected_queue = level;
-                break;
+        /* ВЫБОР ПРОЦЕССА ДЛЯ ВЫПОЛНЕНИЯ */
+
+        /* Проверяем, есть ли процессы с более высоким приоритетом,
+         * чем текущий выполняемый */
+        if (s->running_process != NULL) {
+            /* Определяем приоритет текущего процесса */
+            int current_priority = s->running_process->priority;
+            if (current_priority > 3) current_priority = 3;
+            if (current_priority < 0) current_priority = 0;
+
+            /* Ищем процесс с более высоким приоритетом (меньший номер) */
+            bool higher_priority_found = false;
+            for (int level = 0; level < current_priority; level++) {
+                if (!is_queue_empty(queues[level])) {
+                    higher_priority_found = true;
+                    break;
+                }
+            }
+
+            if (higher_priority_found) {
+                /* ВЫТЕСНЕНИЕ: есть процесс с более высоким приоритетом */
+                strncpy(s->running_process->status, "готов",
+                    sizeof(s->running_process->status) - 1);
+                s->running_process->status[sizeof(s->running_process->status) - 1] = '\0';
+
+                /* Возвращаем текущий процесс в его очередь */
+                enqueue(queues[current_priority], s->running_process);
+                s->running_process = NULL;
             }
         }
 
-        /* Если нет выполняющегося процесса, берем из выбранной очереди */
-        if (s->running_process == NULL && selected_queue != -1) {
-            s->running_process = dequeue(queues[selected_queue]);
-            if (s->running_process->start_time == -1) {
-                s->running_process->start_time = s->current_time;
+        /* Если нет выполняющегося процесса, выбираем процесс с наивысшим приоритетом */
+        if (s->running_process == NULL) {
+            /* Ищем первую непустую очередь (с наивысшим приоритетом) */
+            int selected_level = -1;
+            for (int level = 0; level < 4; level++) {
+                if (!is_queue_empty(queues[level])) {
+                    selected_level = level;
+                    break;
+                }
             }
-            strcpy(s->running_process->status, "выполняется");
-            current_priority = selected_queue;
+
+            if (selected_level != -1) {
+                s->running_process = dequeue(queues[selected_level]);
+                if (s->running_process->start_time == -1) {
+                    s->running_process->start_time = s->current_time;
+                }
+                strncpy(s->running_process->status, "выполняется",
+                    sizeof(s->running_process->status) - 1);
+                s->running_process->status[sizeof(s->running_process->status) - 1] = '\0';
+            }
         }
 
-        /* Выполняем процесс */
+        /* ВЫПОЛНЕНИЕ ПРОЦЕССА */
         if (s->running_process != NULL) {
             s->running_process->remaining_time--;
-            strcpy(s->running_process->status, "выполняется");
+            strncpy(s->running_process->status, "выполняется",
+                sizeof(s->running_process->status) - 1);
+            s->running_process->status[sizeof(s->running_process->status) - 1] = '\0';
             add_history(s, s->current_time, s->running_process->pid, "running");
 
             /* Проверяем завершение */
@@ -162,7 +190,9 @@ Process** priority_scheduler(Scheduler* s) {
                     s->running_process->completion_time - s->running_process->arrival_time;
                 s->running_process->waiting_time =
                     s->running_process->turnaround_time - s->running_process->burst_time;
-                strcpy(s->running_process->status, "завершен");
+                strncpy(s->running_process->status, "завершен",
+                    sizeof(s->running_process->status) - 1);
+                s->running_process->status[sizeof(s->running_process->status) - 1] = '\0';
 
                 Process* completed = (Process*)malloc(sizeof(Process));
                 if (completed) {
@@ -172,25 +202,6 @@ Process** priority_scheduler(Scheduler* s) {
 
                 s->running_process = NULL;
                 remaining_count--;
-                current_priority = -1;
-            }
-            else if (selected_queue != -1) {
-                /* Проверяем, не появился ли процесс с более высоким приоритетом */
-                bool higher_priority = false;
-                for (int level = 0; level < selected_queue; level++) {
-                    if (!is_queue_empty(queues[level])) {
-                        higher_priority = true;
-                        break;
-                    }
-                }
-
-                if (higher_priority) {
-                    /* Вытесняем текущий процесс */
-                    strcpy(s->running_process->status, "готов");
-                    enqueue(queues[selected_queue], s->running_process);
-                    s->running_process = NULL;
-                    current_priority = -1;
-                }
             }
         }
         else {

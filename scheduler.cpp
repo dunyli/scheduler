@@ -10,6 +10,16 @@
 #include "round_robin.h"
 #include "priority.h"
 #include "visualizer.h"
+#include "monitor.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#include <tlhelp32.h>
+#include <psapi.h>
+#endif
+
+
+
 
 /* Объявление функции из test.cpp */
 void run_all_tests();
@@ -157,29 +167,36 @@ static void run_interactive() {
 
 /*
  * Функция: main
- * Назначение: Точка входа в программу
  * Предоставляет выбор между интерактивным режимом и тестами
  */
+
 int main() {
     /* Установка русской локали для корректного отображения */
     setlocale(LC_ALL, "Rus");
 
-    printf("%s%sСимулятор планировщика процессов%s\n",
-        COLOR_HEADER, COLOR_BOLD, COLOR_END);
-    printf("1. Интерактивный режим\n");
-    printf("2. Запустить автоматические тесты\n");
-    printf("3. Выход\n");
+    printf("%s%sСИСТЕМНЫЙ МОНИТОР И ПЛАНИРОВЩИК%s\n", COLOR_HEADER, COLOR_BOLD, COLOR_END);
+    printf("\n1. Мониторинг системы (реальные процессы)\n");
+    printf("2. Симулятор планировщика\n");
+    printf("3. Запустить тесты\n");
+    printf("4. Выход\n");
 
-    printf("\nВыберите режим (1-3): ");
+    printf("\nВыберите режим (1-4): ");
     char mode[10];
     fgets(mode, sizeof(mode), stdin);
     int m = atoi(mode);
 
     switch (m) {
     case 1:
-        run_interactive();
+#ifdef _WIN32
+        system_monitor_mode();
+#else
+        printf("Режим мониторинга только для Windows\n");
+#endif
         break;
     case 2:
+        run_interactive();
+        break;
+    case 3:
         run_all_tests();
         break;
     default:

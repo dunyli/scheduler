@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "visualizer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,6 @@
 /*
  * Функция: clear_screen
  * Назначение: Очищает экран терминала
- * Использует ANSI escape-последовательности
  */
 void clear_screen() {
     printf("\033[2J\033[1;1H");
@@ -46,91 +46,138 @@ void display_process_info(Scheduler* s) {
 }
 
 /*
- * Функция: display_gantt_chart
- * Назначение: Отображает диаграмму Ганта
+ * Функция: display_schedule_table
+ * Назначение: Отображает таблицу с временными интервалами выполнения
+ * Вместо диаграммы Ганта показывает:
+ * - Время начала интервала
+ * - Какой процесс выполняется
+ * - Длительность интервала
  */
-void display_gantt_chart(Scheduler* s) {
+static void display_schedule_table(Scheduler* s) {
     if (!s || s->history_size == 0) {
         printf("Нет данных для отображения.\n");
         return;
     }
 
-    printf("%s%sДиаграмма Ганта (время 0-%d):%s\n",
-        COLOR_BOLD, COLOR_CYAN, s->current_time, COLOR_END);
+    printf("%s%s=== РАСПИСАНИЕ ВЫПОЛНЕНИЯ (ПО ИНТЕРВАЛАМ) ===%s\n",
+        COLOR_BOLD, COLOR_CYAN, COLOR_END);
+    printf("\n");
+    printf("%-15s %-25s %-15s %-15s\n",
+        "Начало", "Процесс", "Длительность", "До");
+    printf("--------------------------------------------------------------------------------\n");
 
-    typedef struct GanttEntry {
-        int start;
-        int end;
-        int pid;
-    } GanttEntry;
-
-    GanttEntry* gantt = (GanttEntry*)malloc(s->history_size * sizeof(GanttEntry));
-    if (!gantt) {
-        printf("Ошибка выделения памяти\n");
-        return;
-    }
-
-    int gantt_size = 0;
-    int current_pid = s->history[0].pid;
     int start_time = s->history[0].time;
+    int current_pid = s->history[0].pid;
+    int total_idle = 0;
+    int total_busy = 0;
 
     for (int i = 1; i < s->history_size; i++) {
         if (s->history[i].pid != current_pid) {
-            gantt[gantt_size].start = start_time;
-            gantt[gantt_size].end = s->history[i].time;
-            gantt[gantt_size].pid = current_pid;
-            gantt_size++;
-            current_pid = s->history[i].pid;
+            int duration = s->history[i].time - start_time;
+            int end_time = s->history[i].time;
+
+            if (current_pid == -1) {
+                /* Простой процессора */
+                printf("%-15d %-25s %-15d %-15d\n",
+                    start_time, "ПРОСТОЙ (IDLE)", duration, end_time);
+                total_idle += duration;
+            }
+            else {
+                /* Выполнение процесса */
+                Process* p = get_process_by_pid(s, current_pid);
+                if (p) {
+                    char display_name[30];
+                    snprintf(display_name, sizeof(display_name), "%s (PID=%d)", p->name, p->pid);
+                    printf("%-15d %-25s %-15d %-15d\n",
+                        start_time, display_name, duration, end_time);
+                    total_busy += duration;
+                }
+            }
+
             start_time = s->history[i].time;
+            current_pid = s->history[i].pid;
         }
     }
-    gantt[gantt_size].start = start_time;
-    gantt[gantt_size].end = s->current_time;
-    gantt[gantt_size].pid = current_pid;
-    gantt_size++;
 
-    int max_width = 80;
-    int total_time = s->current_time;
-    int scale = (total_time / max_width) + 1;
+    /* Последний интервал */
+    int duration = s->current_time - start_time;
+    int end_time = s->current_time;
 
-    const char* colors[] = { COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE,
-                            COLOR_CYAN, COLOR_MAGENTA, COLOR_HEADER, "" };
+    if (current_pid == -1) {
+        printf("%-15d %-25s %-15d %-15d\n",
+            start_time, "ПРОСТОЙ (IDLE)", duration, end_time);
+        total_idle += duration;
+    }
+    else {
+        Process* p = get_process_by_pid(s, current_pid);
+        if (p) {
+            char display_name[30];
+            snprintf(display_name, sizeof(display_name), "%s (PID=%d)", p->name, p->pid);
+            printf("%-15d %-25s %-15d %-15d\n",
+                start_time, display_name, duration, end_time);
+            total_busy += duration;
+        }
+    }
 
-    for (int i = 0; i < gantt_size && i < max_width; i++) {
-        int length = gantt[i].end - gantt[i].start;
-        char symbol = '.';
-        const char* color = COLOR_END;
+    printf("--------------------------------------------------------------------------------\n");
 
-        if (gantt[i].pid != -1) {
+    /* Итоговая статистика по времени */
+    printf("\n%sСводка по времени:%s\n", COLOR_BOLD, COLOR_END);
+    printf("  Всего тактов: %d\n", s->current_time);
+    printf("  Время выполнения процессов: %d (%.1f%%)\n",
+        total_busy, (float)total_busy / s->current_time * 100);
+    printf("  Время простоя: %d (%.1f%%)\n",
+        total_idle, (float)total_idle / s->current_time * 100);
+    printf("  Количество переключений: %d\n", s->history_size - 1);
+
+    /* Подробная информация по каждому процессу */
+    printf("\n%sВремя выполнения по процессам:%s\n", COLOR_BOLD, COLOR_END);
+
+    /* Собираем статистику по каждому процессу */
+    int* process_time = (int*)calloc(s->num_processes, sizeof(int));
+    if (process_time) {
+        start_time = s->history[0].time;
+        current_pid = s->history[0].pid;
+
+        for (int i = 1; i < s->history_size; i++) {
+            if (s->history[i].pid != current_pid) {
+                duration = s->history[i].time - start_time;
+                if (current_pid != -1) {
+                    for (int j = 0; j < s->num_processes; j++) {
+                        if (s->processes[j]->pid == current_pid) {
+                            process_time[j] += duration;
+                            break;
+                        }
+                    }
+                }
+                start_time = s->history[i].time;
+                current_pid = s->history[i].pid;
+            }
+        }
+
+        /* Последний интервал */
+        duration = s->current_time - start_time;
+        if (current_pid != -1) {
             for (int j = 0; j < s->num_processes; j++) {
-                if (s->processes[j]->pid == gantt[i].pid) {
-                    symbol = s->processes[j]->name[0];
-                    color = colors[gantt[i].pid % 7];
+                if (s->processes[j]->pid == current_pid) {
+                    process_time[j] += duration;
                     break;
                 }
             }
         }
 
-        int count = length / scale;
-        if (count < 1) count = 1;
-        for (int j = 0; j < count; j++) {
-            if (gantt[i].pid == -1) {
-                printf(".");
-            }
-            else {
-                printf("%s%c%s", color, symbol, COLOR_END);
-            }
+        /* Вывод статистики по каждому процессу */
+        for (int i = 0; i < s->num_processes; i++) {
+            Process* p = s->processes[i];
+            int time = process_time[i];
+            printf("  %s: %d тактов (%.1f%%)\n",
+                p->name, time, (float)time / s->current_time * 100);
         }
-    }
-    printf("\n");
 
-    printf(" ");
-    for (int i = 0; i <= total_time; i += (total_time / 20) + 1) {
-        printf("%-4d", i);
+        free(process_time);
     }
-    printf("\n");
 
-    free(gantt);
+    printf("\n");
 }
 
 /*
@@ -143,7 +190,7 @@ void display_statistics(Scheduler* s) {
         return;
     }
 
-    printf("\n%s%sСтатистика:%s\n", COLOR_BOLD, COLOR_HEADER, COLOR_END);
+    printf("\n%s%s=== СТАТИСТИКА ПРОЦЕССОВ ===%s\n", COLOR_BOLD, COLOR_HEADER, COLOR_END);
 
     int total_wait = 0, total_turnaround = 0;
     for (int i = 0; i < s->num_completed; i++) {
@@ -154,20 +201,46 @@ void display_statistics(Scheduler* s) {
     float avg_wait = (float)total_wait / s->num_completed;
     float avg_turnaround = (float)total_turnaround / s->num_completed;
 
-    printf("Среднее время ожидания: %.2f\n", avg_wait);
-    printf("Среднее время оборота: %.2f\n", avg_turnaround);
-    printf("Пропускная способность: %d процессов\n", s->num_completed);
-
-    printf("\n%sДетальная информация:%s\n", COLOR_BOLD, COLOR_END);
-    printf("%-6s %-10s %-10s %-10s %-10s\n",
-        "PID", "Имя", "Ожидание", "Оборота", "Завершение");
+    printf("\n%-10s %-15s %-15s %-15s %-15s\n",
+        "Процесс", "Прибытие", "Выполнение", "Ожидание", "Оборот");
     printf("------------------------------------------------------------\n");
 
     for (int i = 0; i < s->num_completed; i++) {
         Process* p = s->completed[i];
-        printf("%-6d %-10s %-10d %-10d %-10d\n",
-            p->pid, p->name, p->waiting_time,
-            p->turnaround_time, p->completion_time);
+        printf("%-10s %-15d %-15d %-15d %-15d\n",
+            p->name, p->arrival_time, p->burst_time,
+            p->waiting_time, p->turnaround_time);
+    }
+
+    printf("------------------------------------------------------------\n");
+    printf("\n%sОбщая статистика:%s\n", COLOR_BOLD, COLOR_END);
+    printf("  Среднее время ожидания: %.2f\n", avg_wait);
+    printf("  Среднее время оборота: %.2f\n", avg_turnaround);
+    printf("  Пропускная способность: %d процессов\n", s->num_completed);
+
+    /* Минимальное и максимальное время */
+    if (s->num_completed > 0) {
+        int min_wait = s->completed[0]->waiting_time;
+        int max_wait = s->completed[0]->waiting_time;
+        int min_turnaround = s->completed[0]->turnaround_time;
+        int max_turnaround = s->completed[0]->turnaround_time;
+
+        for (int i = 1; i < s->num_completed; i++) {
+            if (s->completed[i]->waiting_time < min_wait)
+                min_wait = s->completed[i]->waiting_time;
+            if (s->completed[i]->waiting_time > max_wait)
+                max_wait = s->completed[i]->waiting_time;
+            if (s->completed[i]->turnaround_time < min_turnaround)
+                min_turnaround = s->completed[i]->turnaround_time;
+            if (s->completed[i]->turnaround_time > max_turnaround)
+                max_turnaround = s->completed[i]->turnaround_time;
+        }
+
+        printf("\n%sЭкстремумы:%s\n", COLOR_BOLD, COLOR_END);
+        printf("  Минимальное время ожидания: %d\n", min_wait);
+        printf("  Максимальное время ожидания: %d\n", max_wait);
+        printf("  Минимальное время оборота: %d\n", min_turnaround);
+        printf("  Максимальное время оборота: %d\n", max_turnaround);
     }
 }
 
@@ -178,13 +251,13 @@ void display_statistics(Scheduler* s) {
 void visualize_scheduler(Scheduler* s, const char* algorithm_name) {
     clear_screen();
 
-    printf("%s%s=== Симулятор планировщика процессов ===%s\n",
+    printf("%s%s=== СИМУЛЯТОР ПЛАНИРОВЩИКА ПРОЦЕССОВ ===%s\n",
         COLOR_HEADER, COLOR_BOLD, COLOR_END);
     printf("%sАлгоритм: %s%s\n", COLOR_BOLD, algorithm_name, COLOR_END);
     printf("Квант времени: %d\n\n", s->time_quantum);
 
     display_process_info(s);
-    display_gantt_chart(s);
+    display_schedule_table(s);    /* Вместо диаграммы Ганта */
     display_statistics(s);
 }
 
